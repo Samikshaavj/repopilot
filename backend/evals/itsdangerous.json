@@ -1,0 +1,23 @@
+{
+  "repo": "https://github.com/pallets/itsdangerous",
+  "questions": [
+    {"q": "how are tokens signed", "expected": ["Signer.sign", "TimestampSigner.sign", "Serializer.dumps"]},
+    {"q": "what happens when a signature is invalid", "expected": ["BadSignature", "Signer.unsign", "Signer.validate"]},
+    {"q": "how does token expiry work", "expected": ["SignatureExpired", "TimestampSigner.unsign", "TimedSerializer.loads"]},
+    {"q": "convert data to a string", "expected": ["Serializer.dumps", "Serializer.dump_payload"]},
+    {"q": "BadSignature", "expected": ["BadSignature"]},
+    {"q": "where is base64 encoding done", "expected": ["base64_encode", "base64_decode"]},
+    {"q": "how is text converted to bytes", "expected": ["want_bytes"]},
+    {"q": "how is the signature value computed", "expected": ["Signer.get_signature", "HMACAlgorithm.get_signature"]},
+    {"q": "how is the secret key turned into a signing key", "expected": ["Signer.derive_key"]},
+    {"q": "how does key rotation with several secret keys work", "expected": ["Serializer.iter_unsigners", "Serializer.make_signer"]},
+    {"q": "how do I load data without verifying the signature", "expected": ["Serializer.loads_unsafe"]},
+    {"q": "how is a timestamp added to a signed value", "expected": ["TimestampSigner.sign", "TimestampSigner.get_timestamp"]},
+    {"q": "how do I find out when a token was signed", "expected": ["TimestampSigner.timestamp_to_datetime", "TimedSerializer.loads", "TimestampSigner.unsign"]},
+    {"q": "how is data compressed for use in URLs", "expected": ["URLSafeSerializerMixin.dump_payload", "URLSafeSerializerMixin.load_payload"]},
+    {"q": "which exceptions can be raised for bad data", "expected": ["BadData", "BadSignature", "BadPayload", "BadHeader"]},
+    {"q": "how do I save signed data to a file", "expected": ["Serializer.dump", "Serializer.load"]},
+    {"q": "how is the HMAC calculated", "expected": ["HMACAlgorithm.get_signature", "HMACAlgorithm"]},
+    {"q": "how are two signatures compared safely", "expected": ["SigningAlgorithm.verify_signature"]}
+  ]
+}
