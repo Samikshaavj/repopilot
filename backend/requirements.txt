@@ -3,3 +3,4 @@ python-dotenv
 tree-sitter
 tree-sitter-python
 pytest
+pgvector
