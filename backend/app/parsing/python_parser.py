@@ -32,23 +32,53 @@ def _docstring(body: Node | None, src: bytes) -> str | None:
         return raw.strip("\"'").strip()
 
 
-def _calls_in(node: Node, src: bytes) -> list[str]:
-    """Names of functions called anywhere inside `node` (no duplicates)."""
-    names: list[str] = []
+def _calls_in(node: Node, src: bytes):
+    """Names called inside `node`: (all names, called on self, called on super())."""
+    all_names: list[str] = []
+    self_names: list[str] = []
+    super_names: list[str] = []
+
     stack = [node]
     while stack:
         current = stack.pop()
         if current.type == "call":
             fn = current.child_by_field_name("function")
             if fn is not None:
-                if fn.type == "identifier":                # helper(x)
-                    names.append(_text(fn, src))
-                elif fn.type == "attribute":               # self.verify(x)
+                if fn.type == "identifier":                      # helper(x)
+                    name = _text(fn, src)
+                    if name != "super":                          # super() itself is not a real call
+                        all_names.append(name)
+                elif fn.type == "attribute":                     # something.name(x)
                     attr = fn.child_by_field_name("attribute")
+                    obj = fn.child_by_field_name("object")
                     if attr is not None:
-                        names.append(_text(attr, src))
+                        name = _text(attr, src)
+                        owner = _text(obj, src) if obj is not None else ""
+                        all_names.append(name)
+                        if owner in ("self", "cls"):
+                            self_names.append(name)
+                        elif owner.startswith("super("):
+                            super_names.append(name)
         stack.extend(current.children)
-    return list(dict.fromkeys(names))
+
+    dedupe = lambda names: list(dict.fromkeys(names))
+    return dedupe(all_names), dedupe(self_names), dedupe(super_names)
+
+
+def _bases(class_node: Node, src: bytes) -> list[str]:
+    """Parent class names: class Child(Base, mixins.Other) -> ["Base", "Other"]."""
+    supers = class_node.child_by_field_name("superclasses")
+    if supers is None:
+        return []
+    names = []
+    for child in supers.named_children:
+        if child.type == "identifier":
+            names.append(_text(child, src))
+        elif child.type == "attribute":
+            attr = child.child_by_field_name("attribute")
+            if attr is not None:
+                names.append(_text(attr, src))
+    return names
 
 
 def _walk(node, src, file_path, scope, in_class, symbols, imports):
@@ -78,6 +108,11 @@ def _walk(node, src, file_path, scope, in_class, symbols, imports):
                 "utf-8", errors="replace"
             ).strip()
 
+            if is_class:
+                calls, self_calls, super_calls = [], [], []
+            else:
+                calls, self_calls, super_calls = _calls_in(body, src)
+
             symbols.append(Symbol(
                 kind=kind,
                 name=name,
@@ -88,7 +123,10 @@ def _walk(node, src, file_path, scope, in_class, symbols, imports):
                 signature=signature,
                 docstring=_docstring(body, src),
                 code=_text(outer, src),
-                calls=[] if is_class else _calls_in(body, src),
+                calls=calls,
+                self_calls=self_calls,
+                super_calls=super_calls,
+                bases=_bases(target, src) if is_class else [],
             ))
 
             # Look inside for methods and nested functions

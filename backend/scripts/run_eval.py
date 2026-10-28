@@ -1,5 +1,6 @@
 import json
 import sys
+from functools import partial
 from pathlib import Path
 
 from app.db import get_connection
@@ -8,10 +9,22 @@ from app.search import hybrid_search, keyword_search, vector_search
 EVAL_DIR = Path(__file__).resolve().parent.parent / "evals"
 K = 5
 
+def weighted(keyword_weight: float):
+    """A hybrid search where keyword results count `keyword_weight` times as much."""
+    return partial(
+        hybrid_search,
+        weights={"vector": 1.0, "keyword": keyword_weight, "name": 1.0},
+    )
+
+
 METHODS = {
     "vector": vector_search,
     "keyword": keyword_search,
-    "hybrid": hybrid_search,
+    "hyb 1.0": weighted(1.0),
+    "hyb 0.5": weighted(0.5),
+    "hyb 0.25": weighted(0.25),
+    "hyb 0.0": weighted(0.0),
+        "default": hybrid_search,
 }
 
 

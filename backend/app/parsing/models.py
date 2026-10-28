@@ -12,7 +12,10 @@ class Symbol:
     signature: str       # "def login(self, user):"
     docstring: str | None
     code: str            # the full source of the symbol
-    calls: list[str] = field(default_factory=list)  # names it calls
+    calls: list[str] = field(default_factory=list)        # every name it calls
+    self_calls: list[str] = field(default_factory=list)   # called as self.name()
+    super_calls: list[str] = field(default_factory=list)  # called as super().name()
+    bases: list[str] = field(default_factory=list)        # for classes: parent class names
 
 
 @dataclass

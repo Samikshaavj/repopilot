@@ -117,25 +117,35 @@ def name_search(
     return [SearchResult(*row) for row in rows]
 
 
+DEFAULT_WEIGHTS = {"vector": 1.0, "keyword": 0.0, "name": 1.0}
+
+SEARCHERS = {
+    "vector": vector_search,
+    "keyword": keyword_search,
+    "name": name_search,
+}
+
+
 def hybrid_search(
     repo_id: int,
     question: str,
     limit: int = 5,
     include_tests: bool = False,
     pool: int = 20,
+    weights: dict | None = None,
 ) -> list[SearchResult]:
-    """Merge vector, keyword and name search with reciprocal rank fusion."""
-    ranked_lists = [
-        vector_search(repo_id, question, pool, include_tests),
-        keyword_search(repo_id, question, pool, include_tests),
-        name_search(repo_id, question, pool, include_tests),
-    ]
+    """Weighted reciprocal rank fusion. A weight of 0 skips that search entirely."""
+    weights = weights or DEFAULT_WEIGHTS
 
     fused: dict[int, float] = {}
     first_seen: dict[int, SearchResult] = {}
-    for results in ranked_lists:
+    for source, searcher in SEARCHERS.items():
+        weight = weights.get(source, 0.0)
+        if weight == 0:
+            continue
+        results = searcher(repo_id, question, pool, include_tests)
         for rank, result in enumerate(results, start=1):
-            fused[result.chunk_id] = fused.get(result.chunk_id, 0.0) + 1.0 / (RRF_K + rank)
+            fused[result.chunk_id] = fused.get(result.chunk_id, 0.0) + weight / (RRF_K + rank)
             first_seen.setdefault(result.chunk_id, result)
 
     best_ids = sorted(fused, key=fused.get, reverse=True)[:limit]

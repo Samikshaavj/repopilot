@@ -56,3 +56,27 @@ def test_decorator_included_and_lines_start_at_one():
 def test_imports_collected():
     parsed = parse_python(SAMPLE, "auth.py")
     assert [i.text for i in parsed.imports] == ["import os", "from pathlib import Path"]
+
+CLASS_SAMPLE = '''
+class Base:
+    def run(self):
+        pass
+
+class Child(Base):
+    def run(self):
+        super().run()
+        self.helper()
+
+    def helper(self):
+        pass
+'''
+
+
+def test_call_kinds_and_bases():
+    parsed = parse_python(CLASS_SAMPLE, "x.py")
+    by_name = {s.qualified_name: s for s in parsed.symbols}
+    assert by_name["Child"].bases == ["Base"]
+    run = by_name["Child.run"]
+    assert run.super_calls == ["run"]
+    assert run.self_calls == ["helper"]
+    assert set(run.calls) == {"run", "helper"}
