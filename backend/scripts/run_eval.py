@@ -20,11 +20,7 @@ def weighted(keyword_weight: float):
 METHODS = {
     "vector": vector_search,
     "keyword": keyword_search,
-    "hyb 1.0": weighted(1.0),
-    "hyb 0.5": weighted(0.5),
-    "hyb 0.25": weighted(0.25),
-    "hyb 0.0": weighted(0.0),
-        "default": hybrid_search,
+    "default": hybrid_search,
 }
 
 

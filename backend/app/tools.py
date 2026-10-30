@@ -6,10 +6,10 @@ from app.search import hybrid_search
 
 logger = logging.getLogger(__name__)
 
-MAX_RESULT_CHARS = 6000   # no tool result may be longer than this
-MAX_FILE_LINES = 150      # read_file returns at most this many lines per call
-SNIPPET_CHARS = 700       # how much code search_code shows per result
-
+MAX_RESULT_CHARS = 3500   # no tool result may be longer than this
+MAX_FILE_LINES = 100      # read_file returns at most this many lines per call
+SNIPPET_CHARS = 450       # how much code search_code shows per result
+SYMBOL_CHARS = 6500       # read_symbol may return a bit more: the whole function is the key evidence
 
 def _truncate(text: str, limit: int = MAX_RESULT_CHARS) -> str:
     if len(text) <= limit:
@@ -47,9 +47,20 @@ def tool_read_file(repo_id: int, path: str, start_line: int = 1, end_line: int |
     end = int(end_line) if end_line else start + MAX_FILE_LINES - 1
     end = min(end, start + MAX_FILE_LINES - 1, len(lines))
 
-    numbered = [f"{n:>5}  {lines[n - 1]}" for n in range(start, end + 1)]
+    numbered = []
+    used = 0
+    for n in range(start, end + 1):
+        line = f"{n:>5}  {lines[n - 1][:300]}"
+        if used + len(line) > MAX_RESULT_CHARS - 200:
+            end = n - 1          # stop here, and report honestly where we stopped
+            break
+        numbered.append(line)
+        used += len(line) + 1
+
     header = f"{path}, lines {start}-{end} of {len(lines)}"
-    return _truncate(header + "\n" + "\n".join(numbered))
+    if end < len(lines):
+        header += f" (continue with start_line={end + 1})"
+    return header + "\n" + "\n".join(numbered)
 
 
 def tool_list_files(repo_id: int, prefix: str = "") -> str:
@@ -83,10 +94,42 @@ def _resolve_symbol(repo_id: int, symbol: str):
 def _format_nodes(nodes) -> str:
     if not nodes:
         return "  (none found)"
-    return "\n".join(
-        f"{'  ' * (n.depth - 1)}- {n.qualified_name}  ({n.path}:{n.start_line}-{n.end_line})"
-        for n in nodes
-    )
+    lines = []
+    for n in nodes:
+        distance = "direct" if n.depth == 1 else f"{n.depth} steps away"
+        lines.append(f"- [{distance}] {n.qualified_name}  ({n.path}:{n.start_line}-{n.end_line})")
+    return "\n".join(lines)
+
+
+def tool_read_symbol(repo_id: int, symbol: str) -> str:
+    target, note = _resolve_symbol(repo_id, symbol)
+    if target is None:
+        return note
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT code FROM chunks WHERE id = %s AND repo_id = %s",
+            (target.chunk_id, repo_id),
+        ).fetchone()
+    if row is None:
+        return f"Could not load {symbol!r}."
+    numbered = [f"{target.start_line + i:>5}  {line}" for i, line in enumerate(row[0].splitlines())]
+    header = f"{target.qualified_name}  ({target.path}:{target.start_line}-{target.end_line})"
+    shown = []
+    used = len(note) + len(header)
+    for line in numbered:
+        if used + len(line) + 1 > SYMBOL_CHARS:
+            break
+        shown.append(line)
+        used += len(line) + 1
+
+    text = note + header + "\n" + "\n".join(shown)
+    if len(shown) < len(numbered):
+        last_shown = target.start_line + len(shown) - 1
+        text += (
+            f"\n... [cut off after line {last_shown}; read the rest with "
+            f"read_file(path='{target.path}', start_line={last_shown + 1})]"
+        )
+    return text
 
 
 def tool_get_callers(repo_id: int, symbol: str, depth: int = 1) -> str:
@@ -116,6 +159,7 @@ def tool_get_callees(repo_id: int, symbol: str, depth: int = 1) -> str:
 
 TOOL_FUNCTIONS = {
     "search_code": tool_search_code,
+    "read_symbol": tool_read_symbol,
     "read_file": tool_read_file,
     "list_files": tool_list_files,
     "get_callers": tool_get_callers,
@@ -142,11 +186,31 @@ TOOL_SCHEMAS = [
         },
     },
     {
+        "name": "read_symbol",
+        "description": (
+            "Read the full source code of one function, method or class, with line numbers. "
+            "Prefer this over read_file whenever you know the name: it returns the whole "
+            "function in a single call. For a large class it returns only the beginning, "
+            "so read the class's methods one by one."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "Name such as 'Class.method' or 'function_name'.",
+                }
+            },
+            "required": ["symbol"],
+        },
+    },
+    {
         "name": "read_file",
         "description": (
-            "Read lines from a source file, shown with line numbers. Use it after search_code "
-            "to see surrounding code such as imports, constants and neighbouring functions. "
-            "Returns at most 150 lines per call; pass start_line and end_line for other parts."
+            "Read lines from a source file, shown with line numbers. Use it for parts that "
+            "read_symbol cannot show, such as the imports at the top of a file or code between "
+            "functions. Returns at most 100 lines per call; pass start_line and end_line for "
+            "other parts."
         ),
         "input_schema": {
             "type": "object",
@@ -211,7 +275,9 @@ def run_tool(repo_id: int, name: str, arguments: dict) -> str:
     try:
         return func(repo_id, **arguments)
     except TypeError as error:
-        return f"Bad arguments for {name}: {error}"
+        schema = next(s for s in TOOL_SCHEMAS if s["name"] == name)
+        valid = ", ".join(schema["input_schema"]["properties"])
+        return f"Bad arguments for {name}: {error}. The valid arguments are: {valid}."
     except Exception as error:
         logger.exception("Tool %s failed", name)
         return f"The tool {name} failed: {error}"

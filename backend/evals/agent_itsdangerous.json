@@ -1,0 +1,17 @@
+{
+  "repo": "https://github.com/pallets/itsdangerous",
+  "questions": [
+    {"id": "q01", "q": "How does itsdangerous check whether a token has expired?", "expected": ["TimestampSigner.unsign"]},
+    {"id": "q02", "q": "What happens when Serializer.loads receives a bad signature?", "expected": ["Serializer.loads", "Signer.unsign"]},
+    {"id": "q03", "q": "How are tokens signed?", "expected": ["Signer.sign", "TimestampSigner.sign", "Serializer.dumps"]},
+    {"id": "q04", "q": "How is the secret key turned into the key used for signing?", "expected": ["Signer.derive_key"]},
+    {"id": "q05", "q": "How does key rotation with several secret keys work?", "expected": ["Serializer.iter_unsigners", "Serializer.__init__", "Serializer.secret_key"]},
+    {"id": "q06", "q": "How does URLSafeSerializer compress data?", "expected": ["URLSafeSerializerMixin.dump_payload", "URLSafeSerializerMixin.load_payload"]},
+    {"id": "q07", "q": "Which exceptions can be raised for bad data and how do they relate to each other?", "expected": ["BadData", "BadSignature", "BadTimeSignature", "SignatureExpired", "BadPayload", "BadHeader"]},
+    {"id": "q08", "q": "How does the library compare signatures safely?", "expected": ["SigningAlgorithm.verify_signature"]},
+    {"id": "q09", "q": "How does a Serializer turn Python data into a signed string?", "expected": ["Serializer.dumps", "Serializer.dump_payload"]},
+    {"id": "q10", "q": "How can I read the data of a token without verifying its signature?", "expected": ["Serializer.loads_unsafe", "Serializer._loads_unsafe_impl"]},
+    {"id": "q11", "q": "What does TimestampSigner add on top of Signer?", "expected": ["TimestampSigner.sign", "TimestampSigner.unsign"]},
+    {"id": "q12", "q": "Which functions call Signer.derive_key?", "expected": ["Signer.get_signature", "Signer.verify_signature"]}
+  ]
+}

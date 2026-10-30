@@ -32,6 +32,16 @@ def _docstring(body: Node | None, src: bytes) -> str | None:
         return raw.strip("\"'").strip()
 
 
+def _is_overload(decorated: Node, src: bytes) -> bool:
+    """True for functions marked @overload or @typing.overload: type-hint stubs, not real code."""
+    for child in decorated.children:
+        if child.type == "decorator":
+            name = _text(child, src).lstrip("@").strip()
+            if name == "overload" or name.endswith(".overload"):
+                return True
+    return False
+
+
 def _calls_in(node: Node, src: bytes):
     """Names called inside `node`: (all names, called on self, called on super())."""
     all_names: list[str] = []
@@ -86,6 +96,8 @@ def _walk(node, src, file_path, scope, in_class, symbols, imports):
         outer = child          # the node whose lines we report
         target = child
         if child.type == "decorated_definition":
+            if _is_overload(child, src):
+                continue       # type-hint stub: skip it, the real definition comes later
             # "@decorator + def/class": the real definition is inside
             target = child.child_by_field_name("definition") or child
 

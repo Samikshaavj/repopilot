@@ -80,3 +80,24 @@ def test_call_kinds_and_bases():
     assert run.super_calls == ["run"]
     assert run.self_calls == ["helper"]
     assert set(run.calls) == {"run", "helper"}
+
+OVERLOAD_SAMPLE = '''
+import typing as t
+
+class Signer:
+    @t.overload
+    def unsign(self, value: str, flag: t.Literal[False] = False) -> bytes: ...
+
+    @t.overload
+    def unsign(self, value: str, flag: t.Literal[True] = True) -> tuple: ...
+
+    def unsign(self, value, flag=False):
+        return value
+'''
+
+
+def test_overload_stubs_are_skipped():
+    parsed = parse_python(OVERLOAD_SAMPLE, "s.py")
+    unsigns = [s for s in parsed.symbols if s.qualified_name == "Signer.unsign"]
+    assert len(unsigns) == 1
+    assert "return value" in unsigns[0].code
