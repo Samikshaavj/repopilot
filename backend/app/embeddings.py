@@ -1,15 +1,17 @@
-from sentence_transformers import SentenceTransformer
-
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 
 _model = None
 
 
-def get_model() -> SentenceTransformer:
+def get_model():
     """Load the model once and reuse it (loading takes a few seconds)."""
     global _model
     if _model is None:
+        # Imported here, not at the top of the file: importing PyTorch takes many
+        # seconds, and parts of the app (the API starting up, tests) never need it.
+        from sentence_transformers import SentenceTransformer
+
         _model = SentenceTransformer(MODEL_NAME)
     return _model
 

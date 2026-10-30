@@ -102,3 +102,7 @@ def ask_repo(repo_id: int, body: AskRequest):
         "stopped_at_step_limit": result.hit_step_limit,
         "steps": [{"tool": s.name, "arguments": s.arguments} for s in result.steps],
     }
+
+from app.stream import router as stream_router  # noqa: E402
+
+app.include_router(stream_router)
