@@ -17,7 +17,7 @@ function Spinner() {
   )
 }
 
-export default function IndexProgress({ repoId, onReset }) {
+export default function IndexProgress({ repoId, onReset, onReady }) {
   const [repo, setRepo] = useState(null)
   const [error, setError] = useState(null)
 
@@ -31,11 +31,17 @@ export default function IndexProgress({ repoId, onReset }) {
         if (cancelled) return
         setRepo(data)
         setError(null)
-        if (IN_PROGRESS.includes(data.status)) {
+        if (data.status === 'ready') {
+          onReady(data)
+        } else if (IN_PROGRESS.includes(data.status)) {
           timer = setTimeout(poll, 2000)
         }
       } catch (err) {
         if (cancelled) return
+        if (err.message === 'Repository not found') {
+          onReset() // the saved repository no longer exists: go back to the start
+          return
+        }
         setError(err.message)
         timer = setTimeout(poll, 4000)
       }
@@ -47,6 +53,7 @@ export default function IndexProgress({ repoId, onReset }) {
       cancelled = true
       clearTimeout(timer)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repoId])
 
   if (!repo) {
@@ -97,19 +104,6 @@ export default function IndexProgress({ repoId, onReset }) {
             )
           })}
         </ol>
-      )}
-
-      {repo.status === 'ready' && (
-        <div className="rounded-lg bg-emerald-50 p-5 text-emerald-900">
-          <p className="font-medium">Indexed {repo.files} files and {repo.symbols} functions and classes.</p>
-          <p className="mt-1 text-sm">The chat comes in the next step.</p>
-          <button
-            onClick={onReset}
-            className="mt-4 rounded-lg border border-emerald-300 px-4 py-2 text-sm font-medium hover:bg-emerald-100"
-          >
-            Add another repository
-          </button>
-        </div>
       )}
 
       {error && repo.status !== 'failed' && (

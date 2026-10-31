@@ -78,7 +78,7 @@ def tool_list_files(repo_id: int, prefix: str = "") -> str:
 
 def _resolve_symbol(repo_id: int, symbol: str):
     """Turn a name from the agent into one chunk. Returns (node or None, note)."""
-    matches = find_symbols(repo_id, symbol)
+    matches = _find_with_fallbacks(repo_id, symbol)
     if not matches:
         return None, f"No function or class named {symbol!r}. Use search_code to find the exact name."
     note = ""
@@ -273,7 +273,7 @@ def run_tool(repo_id: int, name: str, arguments: dict) -> str:
     if func is None:
         return f"Unknown tool {name!r}. Available tools: {', '.join(TOOL_FUNCTIONS)}."
     try:
-        return func(repo_id, **arguments)
+        return func(repo_id, **_clean_arguments(name, arguments))
     except TypeError as error:
         schema = next(s for s in TOOL_SCHEMAS if s["name"] == name)
         valid = ", ".join(schema["input_schema"]["properties"])
@@ -281,3 +281,34 @@ def run_tool(repo_id: int, name: str, arguments: dict) -> str:
     except Exception as error:
         logger.exception("Tool %s failed", name)
         return f"The tool {name} failed: {error}"
+
+
+ARGUMENT_ALIASES = {
+    "line_start": "start_line",
+    "line_end": "end_line",
+    "file": "path",
+    "file_path": "path",
+    "name": "symbol",
+}
+
+
+def _clean_arguments(tool_name: str, arguments: dict) -> dict:
+    """Forgive small mistakes from the model: rename common aliases, drop unknown arguments."""
+    schema = next(s for s in TOOL_SCHEMAS if s["name"] == tool_name)
+    allowed = set(schema["input_schema"]["properties"])
+    cleaned = {}
+    for key, value in arguments.items():
+        key = ARGUMENT_ALIASES.get(key, key)
+        if key in allowed:
+            cleaned[key] = value
+    return cleaned
+
+
+def _find_with_fallbacks(repo_id: int, symbol: str):
+    """Find a symbol, tolerating module prefixes like 'itsdangerous.timed.TimestampSigner.unsign'."""
+    parts = symbol.strip().split(".")
+    for start in range(len(parts)):
+        matches = find_symbols(repo_id, ".".join(parts[start:]))
+        if matches:
+            return matches
+    return []

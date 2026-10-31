@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { checkHealth } from './api'
 import AddRepoForm from './components/AddRepoForm'
+import Chat from './components/Chat'
 import IndexProgress from './components/IndexProgress'
 
 const STORAGE_KEY = 'repopilot.repoId'
@@ -13,6 +14,7 @@ const BADGE_STYLES = {
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('checking')
+  const [readyRepo, setReadyRepo] = useState(null)
   const [repoId, setRepoId] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     return saved ? Number(saved) : null
@@ -25,9 +27,30 @@ export default function App() {
   }, [])
 
   function chooseRepo(id) {
+    setReadyRepo(null)
     setRepoId(id)
     if (id === null) localStorage.removeItem(STORAGE_KEY)
     else localStorage.setItem(STORAGE_KEY, String(id))
+  }
+
+  let screen
+  if (repoId === null) {
+    screen = (
+      <>
+        <h2 className="text-4xl font-bold tracking-tight">Understand any unfamiliar codebase.</h2>
+        <p className="mb-8 mt-3 text-lg text-slate-600">
+          Paste a GitHub repository. Ask questions in plain English and get answers that cite the
+          exact lines of code.
+        </p>
+        <AddRepoForm onAdded={chooseRepo} />
+      </>
+    )
+  } else if (readyRepo) {
+    screen = <Chat repo={readyRepo} onReset={() => chooseRepo(null)} />
+  } else {
+    screen = (
+      <IndexProgress repoId={repoId} onReset={() => chooseRepo(null)} onReady={setReadyRepo} />
+    )
   }
 
   return (
@@ -39,23 +62,7 @@ export default function App() {
             API: {apiStatus}
           </span>
         </header>
-
-        <div className="mt-14">
-          {repoId === null ? (
-            <>
-              <h2 className="text-4xl font-bold tracking-tight">
-                Understand any unfamiliar codebase.
-              </h2>
-              <p className="mb-8 mt-3 text-lg text-slate-600">
-                Paste a GitHub repository. Ask questions in plain English and get answers that
-                cite the exact lines of code.
-              </p>
-              <AddRepoForm onAdded={chooseRepo} />
-            </>
-          ) : (
-            <IndexProgress repoId={repoId} onReset={() => chooseRepo(null)} />
-          )}
-        </div>
+        <div className="mt-14">{screen}</div>
       </div>
     </main>
   )

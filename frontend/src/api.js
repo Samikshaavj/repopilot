@@ -29,3 +29,47 @@ export const addRepo = (url) =>
   })
 
 export const getRepo = (id) => request(`/repos/${id}`)
+
+
+// Sends a question and calls onEvent(event) for every event the server streams back.
+export async function streamAsk(repoId, question, onEvent, signal) {
+  let response
+  try {
+    response = await fetch(`${API}/repos/${repoId}/ask/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+      signal,
+    })
+  } catch (error) {
+    if (error.name === 'AbortError') return
+    throw new Error('Cannot reach the server. Is the backend running?')
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    throw new Error(typeof data?.detail === 'string' ? data.detail : 'The request failed.')
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      // Events end with a blank line. The last piece may be half-received: keep it.
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop()
+      for (const part of parts) {
+        const line = part.split('\n').find((l) => l.startsWith('data: '))
+        if (line) onEvent(JSON.parse(line.slice(6)))
+      }
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      throw new Error('The connection was interrupted.')
+    }
+  }
+}

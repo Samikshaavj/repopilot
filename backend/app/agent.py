@@ -9,7 +9,7 @@ from app.db import get_connection
 from app.llm import get_client
 from app.tools import TOOL_SCHEMAS, run_tool
 
-MAX_STEPS = 8                  # most tool-calling rounds before we force an answer
+MAX_STEPS = 6                # most tool-calling rounds before we force an answer
 KEEP_FULL_RESULTS = 3          # the newest tool results stay complete
 OLD_RESULT_CHARS = 300         # older tool results are cut down to this many characters
 FINAL_EVIDENCE_CHARS = 12000   # evidence budget for the forced final answer
@@ -22,7 +22,7 @@ You can only see the repository through your tools. Work like this:
 2. Use read_symbol to read a whole function or class by name. Use read_file only for other line ranges, such as imports at the top of a file.
 3. Use get_callers and get_callees for questions about flow or usage ("who uses X", "what happens when X runs").
 4. Never repeat a tool call you have already made: its result is already in the conversation. If a result says it was cut off, continue from the line it names with read_file.
-5. Stop using tools as soon as you have enough evidence. Three to five tool calls are usually enough.
+5. Stop using tools as soon as you have enough evidence (three to five calls are usually enough). When you need several independent pieces of information, request them in the same turn by calling several tools at once: every round trip is slow and costly.
 
 Rules:
 - Base every statement on code you have actually seen in tool results. Never invent functions, files or behaviour.
