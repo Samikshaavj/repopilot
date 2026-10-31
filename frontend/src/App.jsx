@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { checkHealth } from './api'
+import { checkHealth, getConfig } from './api'
 import AddRepoForm from './components/AddRepoForm'
 import Chat from './components/Chat'
 import IndexProgress from './components/IndexProgress'
+import RepoPicker from './components/RepoPicker'
 
 const STORAGE_KEY = 'repopilot.repoId'
 
@@ -14,6 +15,7 @@ const BADGE_STYLES = {
 
 export default function App() {
   const [apiStatus, setApiStatus] = useState('checking')
+  const [demoMode, setDemoMode] = useState(false)
   const [readyRepo, setReadyRepo] = useState(null)
   const [repoId, setRepoId] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -24,6 +26,9 @@ export default function App() {
     checkHealth()
       .then(() => setApiStatus('online'))
       .catch(() => setApiStatus('offline'))
+    getConfig()
+      .then((config) => setDemoMode(Boolean(config.demo_mode)))
+      .catch(() => {})
   }, [])
 
   function chooseRepo(id) {
@@ -39,10 +44,11 @@ export default function App() {
       <>
         <h2 className="text-4xl font-bold tracking-tight">Understand any unfamiliar codebase.</h2>
         <p className="mb-8 mt-3 text-lg text-slate-600">
-          Paste a GitHub repository. Ask questions in plain English and get answers that cite the
-          exact lines of code.
+          {demoMode
+            ? 'Pick a repository, ask questions in plain English, and get answers that cite the exact lines of code.'
+            : 'Paste a GitHub repository. Ask questions in plain English and get answers that cite the exact lines of code.'}
         </p>
-        <AddRepoForm onAdded={chooseRepo} />
+        {demoMode ? <RepoPicker onPicked={chooseRepo} /> : <AddRepoForm onAdded={chooseRepo} />}
       </>
     )
   } else if (readyRepo) {

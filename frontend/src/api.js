@@ -77,3 +77,11 @@ export async function streamAsk(repoId, question, onEvent, signal) {
 // Lines of a file around start-end (for the code viewer).
 export const getFileWindow = (repoId, path, start, end) =>
   request(`/repos/${repoId}/file?${new URLSearchParams({ path, start, end })}`)
+
+
+
+// Settings the backend wants the page to know about (for example demo mode).
+export const getConfig = () => request('/config')
+
+// Repositories that are indexed (in demo mode, only finished ones).
+export const listRepos = () => request('/repos')

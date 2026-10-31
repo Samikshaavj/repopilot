@@ -1,7 +1,12 @@
+from pathlib import Path
+
 import numpy as np
 
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+
+# The model files live inside the project, so a server can download them once, at build time.
+CACHE_DIR = Path(__file__).resolve().parent.parent / "models_cache"
 
 _model = None
 
@@ -13,7 +18,7 @@ def get_model():
         # Imported here, so the API and the tests start fast when they never embed anything.
         from fastembed import TextEmbedding
 
-        _model = TextEmbedding(model_name=MODEL_NAME)
+        _model = TextEmbedding(model_name=MODEL_NAME, cache_dir=str(CACHE_DIR))
     return _model
 
 

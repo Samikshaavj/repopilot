@@ -1,7 +1,10 @@
+fastapi
+uvicorn
 psycopg[binary]
+pgvector
 python-dotenv
+openai
+fastembed
+numpy
 tree-sitter
 tree-sitter-python
-pytest
-pgvector
-openai
