@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { streamAsk } from '../api'
-import Answer from './Answer'
+import AssistantMessage from './AssistantMessage'
+import CodeViewer from './CodeViewer'
 
 const SUGGESTIONS = [
   'Give me an overview of how this project is organised',
@@ -8,60 +9,11 @@ const SUGGESTIONS = [
   'How are errors handled?',
 ]
 
-function Spinner() {
-  return (
-    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
-  )
-}
-
-function AssistantMessage({ message }) {
-  const waiting = message.answer === null && message.error === null
-  return (
-    <div className="space-y-3">
-      {message.steps.length > 0 && (
-        <ul className="space-y-1 text-sm text-slate-500">
-          {message.steps.map((label, index) => {
-            const isLast = index === message.steps.length - 1
-            return (
-              <li key={index} className="flex items-center gap-2">
-                {waiting && isLast ? <Spinner /> : <span className="text-emerald-600">✓</span>}
-                {label}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-
-      {waiting && message.steps.length === 0 && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Spinner /> Thinking…
-        </div>
-      )}
-
-      {message.error && (
-        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-          {message.error}
-        </p>
-      )}
-
-      {message.answer !== null && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <Answer text={message.answer} />
-          {message.limited && (
-            <p className="mt-4 text-xs text-amber-700">
-              The assistant ran out of steps, so this answer may be incomplete.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function Chat({ repo, onReset }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [viewer, setViewer] = useState(null)
   const nextId = useRef(0)
   const abortRef = useRef(null)
   const bottomRef = useRef(null)
@@ -165,7 +117,7 @@ export default function Chat({ repo, onReset }) {
               <p className="max-w-[85%] rounded-2xl bg-slate-900 px-4 py-3 text-white">{message.text}</p>
             </div>
           ) : (
-            <AssistantMessage key={message.id} message={message} />
+            <AssistantMessage key={message.id} message={message} onCite={setViewer} />
           ),
         )}
       </div>
@@ -195,6 +147,8 @@ export default function Chat({ repo, onReset }) {
           {busy ? 'Working…' : 'Ask'}
         </button>
       </form>
+
+      {viewer && <CodeViewer repoId={repo.id} target={viewer} onClose={() => setViewer(null)} />}
     </div>
   )
 }

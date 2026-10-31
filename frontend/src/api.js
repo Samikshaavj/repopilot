@@ -73,3 +73,7 @@ export async function streamAsk(repoId, question, onEvent, signal) {
     }
   }
 }
+
+// Lines of a file around start-end (for the code viewer).
+export const getFileWindow = (repoId, path, start, end) =>
+  request(`/repos/${repoId}/file?${new URLSearchParams({ path, start, end })}`)

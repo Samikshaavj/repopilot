@@ -106,3 +106,7 @@ def ask_repo(repo_id: int, body: AskRequest):
 from app.stream import router as stream_router  # noqa: E402
 
 app.include_router(stream_router)
+
+from app.files import router as files_router  # noqa: E402
+
+app.include_router(files_router)
