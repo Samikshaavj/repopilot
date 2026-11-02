@@ -65,7 +65,7 @@ export default function App() {
         <header className="flex items-center justify-between">
           <h1 className="text-xl font-bold tracking-tight">RepoPilot</h1>
           <span className={`rounded-full px-3 py-1 text-sm font-medium ${BADGE_STYLES[apiStatus]}`}>
-            API: {apiStatus}
+            API: {apiStatus === 'checking' ? 'waking up…' : apiStatus}
           </span>
         </header>
         <div className="mt-14">{screen}</div>
